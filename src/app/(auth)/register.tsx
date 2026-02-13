@@ -1,52 +1,70 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../../config/firebase';
 import { Colors, Layout } from '../../constants/Colors';
 import { Button } from '../../components/Button';
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const router = useRouter();
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Hata', 'Lütfen e-posta ve şifrenizi girin.');
+  const handleRegister = async () => {
+    if (!username || !email || !password) {
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
       return;
     }
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // Auth listener or manual redirect
-      router.replace('/(tabs)');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create user document in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+          username: username,
+          email: email,
+          createdAt: new Date().toISOString(),
+          role: 'user'
+      });
+      
+      Alert.alert("Başarılı", "Hesabınız oluşturuldu!", [
+          { text: "Tamam", onPress: () => router.replace('/(tabs)') }
+      ]);
+
     } catch (error: any) {
-      let msg = "Giriş başarısız.";
+      let msg = "Kayıt başarısız.";
+      if (error.code === 'auth/email-already-in-use') msg = "Bu e-posta zaten kullanımda.";
+      if (error.code === 'auth/weak-password') msg = "Şifre çok zayıf (en az 6 karakter).";
       if (error.code === 'auth/invalid-email') msg = "Geçersiz e-posta adresi.";
-      if (error.code === 'auth/user-not-found') msg = "Kullanıcı bulunamadı.";
-      if (error.code === 'auth/wrong-password') msg = "Hatalı şifre.";
-      if (error.code === 'auth/invalid-credential') msg = "Hatalı e-posta veya şifre.";
+      console.error(error);
       Alert.alert('Hata', msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const goToRegister = () => {
-      router.push('/register');
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Giriş Yap</Text>
-        <Text style={styles.subtitle}>Toksik Metre'ye hoş geldin!</Text>
+        <Text style={styles.title}>Kayıt Ol</Text>
+        <Text style={styles.subtitle}>Aramıza katıl, toksiklik seviyeni ölç!</Text>
       </View>
 
       <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="Kullanıcı Adı"
+          placeholderTextColor={Colors.grayDark}
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+        />
         <TextInput
           style={styles.input}
           placeholder="E-posta"
@@ -69,14 +87,14 @@ export default function LoginScreen() {
             <ActivityIndicator size="large" color={Colors.primary} />
         ) : (
             <Button 
-            title="Giriş Yap" 
-            onPress={handleLogin}
+            title="Kayıt Ol" 
+            onPress={handleRegister}
             style={styles.button}
             />
         )}
 
-        <TouchableOpacity onPress={goToRegister} style={styles.registerLink}>
-            <Text style={styles.registerText}>Hesabın yok mu? <Text style={styles.registerBold}>Kayıt Ol</Text></Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.registerLink}>
+            <Text style={styles.registerText}>Zaten hesabın var mı? <Text style={styles.registerBold}>Giriş Yap</Text></Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -100,7 +118,7 @@ const styles = StyleSheet.create({
     marginBottom: Layout.spacing.xs,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: Colors.grayDark,
   },
   form: {

@@ -10,10 +10,7 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const handlePressTopic = (topic: Topic) => {
-    // Navigate to topic details or list of tests
-    // For now, we'll just log it or navigate to a placeholder if it exists.
-    console.log('Pressed topic:', topic.title);
-    // router.push(`/(tabs)/topic/${topic.id}`); // Example for future
+    router.push(`/topic/${topic.id}`);
   };
 
   const renderTopicItem = ({ item }: { item: Topic }) => (
