@@ -3,6 +3,7 @@ export interface Topic {
   title: string;
   color: string;
   image: any; // Using 'any' for require() images, or string for URI
+  tests: Test[];
 }
 
 export interface Question {
